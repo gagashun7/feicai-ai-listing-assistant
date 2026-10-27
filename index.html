@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Move-Out Agent</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Move-Out Agent</h1>
+      <p class="sub">Photograph your room, tell us your move-out date. Get a priced selling plan for every item.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="mode-banner" class="banner" hidden></div>
+
+    <section class="card" id="step-input">
+      <h2>1. Your room</h2>
+      <label class="drop" for="photos">
+        <input id="photos" type="file" accept="image/*" multiple />
+        <span>Choose up to 4 photos of your room</span>
+      </label>
+      <div id="previews" class="previews"></div>
+
+      <div class="row">
+        <label for="move-date">Move-out date</label>
+        <input id="move-date" type="date" />
+      </div>
+
+      <button id="analyze" class="primary" disabled>Build my selling plan</button>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section class="card" id="step-results" hidden>
+      <div class="results-head">
+        <h2>2. Your selling plan</h2>
+        <p id="plan-summary" class="muted"></p>
+      </div>
+      <div id="items"></div>
+      <div class="actions">
+        <button id="refine" class="secondary" hidden>Update with my answers</button>
+        <button id="export" class="primary">Download listings (JSON)</button>
+      </div>
+    </section>
+
+    <p class="fine">
+      Prices are AI estimates for used goods, not guarantees. The price schedule is computed
+      from your move-out date. Please review every listing before posting.
+    </p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

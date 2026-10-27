@@ -1,28 +1,58 @@
 # feicai-ai-listing-assistant
 
-AI move-out agent for international students: photos in, priced listings out.
+**Move-Out Agent**: an AI agent that turns photos of an international student's room into a priced selling plan, built for the Meta Global AI Developer Hackathon.
 
 Built during the Meta Global AI Developer Hackathon (Oct 26 – Nov 4, 2026).
 
-## About
-
 Feicai (feicai.vercel.app) is a pre-existing student marketplace. Everything in this repository was built during the hackathon, and no code from the existing Feicai codebase is included here.
 
-International students often have to sell furniture, appliances and textbooks in a short time before moving out. This project helps them do it faster: a student uploads photos of their room and enters a move-out date, and the agent turns that into ready-to-post listings with suggested prices.
+## The problem
 
-## Planned features
+International students often have only a few weeks to sell furniture, appliances and textbooks before moving out. Writing listings and guessing prices is slow, and the deadline changes the right price: an item that can wait three weeks should be priced differently from one that must go in three days.
 
-- Identify sellable items from room photos
-- Ask the seller follow-up questions when information is missing
-- Suggest prices based on item condition and the move-out deadline
-- Export listings in a format the Feicai marketplace can import
+## What it does
 
-## Built with
-
-- Meta Model API (Muse Spark, SAM 3.1)
-- Supabase (backend)
-- Vercel (hosting)
+1. The student uploads photos of their room and enters a move-out date.
+2. A Muse model identifies each sellable item and returns structured data (name, category, condition, description, ideal and quick-sale price).
+3. If something that changes the price is unknown (for example how old a mattress is), the agent asks one short question.
+4. A price-drop schedule is computed from the move-out date for every item.
+5. The student reviews everything and exports ready-to-post listings.
 
 ## Status
 
-Work in progress. This README will be updated as features are built.
+| Feature | State |
+|---|---|
+| Web UI (upload, date, results, export) | Done, runs in demo mode with sample data |
+| Edge Function with structured JSON output from Muse Spark | Written, not yet tested against the live API |
+| Follow-up questions and re-analysis | UI done; live behaviour pending |
+| Price-drop schedule from move-out date | Done |
+| SAM 3.1 item cut-outs for listing photos | Planned |
+| Voice input (Muse Voice Transcribe) | Planned |
+
+This table will be updated as features are finished.
+
+## Architecture
+
+- `index.html`, `app.js`, `styles.css`: static front end, no framework.
+- `supabase/functions/analyze-room/index.ts`: Supabase Edge Function. Calls the Meta Model API (Chat Completions, image input, JSON-schema structured output). The API key exists only in the function's environment.
+- `config.js`: public settings (function URL and Supabase publishable key). No secrets.
+
+## Run it
+
+Demo mode (no setup): open `index.html` in a browser.
+
+Live mode:
+
+1. Create a Supabase project and deploy the function: `supabase functions deploy analyze-room`
+2. Set the secret: `supabase secrets set MODEL_API_KEY=...` (see `.env.example`)
+3. Put the function URL and the Supabase publishable key in `config.js`.
+
+## Built with
+
+- Meta Model API (Muse Spark)
+- Supabase Edge Functions
+- Vercel (hosting)
+
+## Notes
+
+Prices are AI estimates for used goods, not guarantees. The price-drop schedule is deterministic and computed in code from the move-out date.
