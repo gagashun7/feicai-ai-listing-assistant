@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Move-Out Agent: Evaluation</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Evaluation</h1>
+      <p class="sub">Run test rooms through the agent and grade the results. The totals below are the numbers used in the demo.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="mode-banner" class="banner" hidden></div>
+
+    <section class="card">
+      <h2>1. Run a test room</h2>
+      <label class="drop" for="photos">
+        <input id="photos" type="file" accept="image/*" multiple />
+        <span>Choose up to 4 photos of one room</span>
+      </label>
+      <div id="previews" class="previews"></div>
+      <div class="row">
+        <label for="move-date">Move-out date</label>
+        <input id="move-date" type="date" />
+      </div>
+      <button id="run" class="primary" disabled>Run</button>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section class="card" id="grade-card" hidden>
+      <h2>2. Grade this room</h2>
+      <p class="muted">For each item: is it really in the photos, and would you accept the price as a starting point?</p>
+      <div id="grade-items"></div>
+      <div class="row">
+        <label for="missed">Sellable items in the photos that the agent missed</label>
+        <input id="missed" type="number" min="0" value="0" style="width:5rem" />
+      </div>
+      <div class="actions"><button id="save" class="primary">Save grades</button></div>
+    </section>
+
+    <section class="card">
+      <h2>3. Results so far</h2>
+      <div id="totals" class="muted">No rooms graded yet.</div>
+      <div class="actions">
+        <button id="copy" class="secondary">Copy summary</button>
+        <button id="reset" class="secondary">Clear</button>
+      </div>
+    </section>
+
+    <p class="fine">Use only photos you took yourself or have permission to use. Grades are stored in this browser only.</p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="eval.js"></script>
+</body>
+</html>
