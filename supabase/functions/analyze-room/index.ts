@@ -6,11 +6,38 @@
 // If MODEL_API_KEY is not set (or MOCK_MODE=true) the function returns demo data, so the
 // whole app can be built and tested without spending any credits.
 
-const API_URL = "https://api.meta.ai/v1/chat/completions";
+// Provider settings (all optional). Defaults call the Meta Model API directly.
+// To use a hosted Muse Spark Open endpoint instead (Baseten, Fireworks, Modal), set
+// MODEL_API_URL (full .../chat/completions URL), MODEL_NAME, and MODEL_API_KEY as secrets.
+const API_URL = Deno.env.get("MODEL_API_URL") ?? "https://api.meta.ai/v1/chat/completions";
 const MODEL = Deno.env.get("MODEL_NAME") ?? "muse-spark-1.3"; // standard mode only
+// "schema" (default) sends a JSON schema; "prompt" is for providers without schema support:
+// the schema is described in the prompt and the reply is parsed leniently.
+const JSON_MODE = Deno.env.get("JSON_MODE") ?? "schema";
 
 const CATEGORIES = ["家具", "数码", "电器", "食品", "转租房", "其他"] as const;
 const CONDITIONS = ["like_new", "good", "fair", "worn"] as const;
+
+// Spend protection. The page is public, so cap real model calls. Counters live in memory
+// (best effort: they reset when the function restarts), which is enough to stop casual abuse.
+const LIMIT_PER_IP_PER_HOUR = Number(Deno.env.get("LIMIT_PER_IP_PER_HOUR") ?? "12");
+const LIMIT_TOTAL_PER_HOUR = Number(Deno.env.get("LIMIT_TOTAL_PER_HOUR") ?? "150");
+const hits = new Map<string, number[]>();
+
+function allowCall(ip: string): boolean {
+  const now = Date.now();
+  const cutoff = now - 3_600_000;
+  for (const key of [ip, "*"]) {
+    const recent = (hits.get(key) ?? []).filter((t) => t > cutoff);
+    hits.set(key, recent);
+  }
+  const mine = hits.get(ip)!;
+  const all = hits.get("*")!;
+  if (mine.length >= LIMIT_PER_IP_PER_HOUR || all.length >= LIMIT_TOTAL_PER_HOUR) return false;
+  mine.push(now);
+  all.push(now);
+  return true;
+}
 
 const MAX_IMAGES = 4;
 const MAX_BODY_BYTES = 12_000_000; // basic guard against huge uploads
@@ -122,10 +149,17 @@ async function callModel(apiKey: string, images: string[], moveOutDate: string, 
     (answerLines ? `Seller's answers to earlier questions:\n${answerLines}\n` : "") +
     "List the sellable items in these photos.";
 
-  const body = {
+  const promptMode = JSON_MODE === "prompt";
+  const system = promptMode
+    ? SYSTEM_PROMPT +
+      "\n\nReply with ONLY a JSON object (no markdown) that matches this JSON schema:\n" +
+      JSON.stringify(ITEMS_SCHEMA)
+    : SYSTEM_PROMPT;
+
+  const body: Record<string, unknown> = {
     model: MODEL,
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: system },
       {
         role: "user",
         content: [
@@ -134,11 +168,13 @@ async function callModel(apiKey: string, images: string[], moveOutDate: string, 
         ],
       },
     ],
-    response_format: {
+  };
+  if (!promptMode) {
+    body.response_format = {
       type: "json_schema",
       json_schema: { name: "RoomItems", strict: true, schema: ITEMS_SCHEMA },
-    },
-  };
+    };
+  }
 
   const res = await fetch(API_URL, {
     method: "POST",
@@ -151,8 +187,13 @@ async function callModel(apiKey: string, images: string[], moveOutDate: string, 
     throw new Error(`model_api_${res.status}`);
   }
   const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  return JSON.parse(content);
+  const content: string = data?.choices?.[0]?.message?.content ?? "";
+  if (!promptMode) return JSON.parse(content);
+  // Lenient parse: strip code fences / surrounding text and take the outermost JSON object.
+  const start = content.indexOf("{");
+  const end = content.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new SyntaxError("no JSON object in reply");
+  return JSON.parse(content.slice(start, end + 1));
 }
 
 Deno.serve(async (req) => {
@@ -186,6 +227,9 @@ Deno.serve(async (req) => {
   if (!apiKey || Deno.env.get("MOCK_MODE") === "true") {
     return json({ mode: "mock", items: mockItems() });
   }
+
+  const ip = (req.headers.get("x-forwarded-for") ?? "unknown").split(",")[0].trim();
+  if (!allowCall(ip)) return json({ error: "rate_limited" }, 429);
 
   try {
     let parsed;
