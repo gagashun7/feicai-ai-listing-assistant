@@ -89,6 +89,7 @@ async function analyze() {
     },
     body: JSON.stringify({ images: state.images, moveOutDate: state.moveOutDate, answers: state.answers }),
   });
+  if (res.status === 429) throw new Error("Too many requests right now. Please wait a few minutes and try again.");
   if (!res.ok) throw new Error("The analysis service returned an error. Please try again.");
   return res.json();
 }
