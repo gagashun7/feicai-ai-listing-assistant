@@ -165,15 +165,28 @@ function updateButton() {
   $("analyze").disabled = !(state.images.length && $("move-date").value);
 }
 
+function renderPreviews() {
+  $("previews").replaceChildren(...state.images.map((src, i) => {
+    const img = el("img", { src, alt: "Room photo (click to remove)", title: "Click to remove" });
+    img.style.cursor = "pointer";
+    img.addEventListener("click", () => { state.images.splice(i, 1); renderPreviews(); updateButton(); });
+    return img;
+  }));
+}
+
+// Photos are added one batch at a time (up to MAX_PHOTOS in total); click a photo to remove it.
 $("photos").addEventListener("change", async (e) => {
-  const files = [...e.target.files].slice(0, MAX_PHOTOS);
+  const room = MAX_PHOTOS - state.images.length;
+  const files = [...e.target.files].slice(0, Math.max(0, room));
+  e.target.value = ""; // lets the same file be picked again
+  if (!files.length) { setStatus(`Up to ${MAX_PHOTOS} photos. Click a photo to remove it.`); return; }
   setStatus("Preparing photos…");
   try {
-    state.images = await Promise.all(files.map(fileToResizedDataUrl));
-    $("previews").replaceChildren(...state.images.map((src) => el("img", { src, alt: "Room photo" })));
-    setStatus("");
+    const added = await Promise.all(files.map(fileToResizedDataUrl));
+    state.images = state.images.concat(added);
+    renderPreviews();
+    setStatus(state.images.length < MAX_PHOTOS ? "You can add more photos, or click a photo to remove it." : "");
   } catch (err) {
-    state.images = [];
     setStatus(err.message, true);
   }
   updateButton();
