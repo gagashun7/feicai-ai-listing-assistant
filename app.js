@@ -202,6 +202,11 @@ async function run() {
   try {
     const result = await analyze();
     state.items = result.items || [];
+    if (result.mode === "mock") {
+      const b = $("mode-banner");
+      b.textContent = "Sample data: the live AI model is not connected yet, so these results are not real model output.";
+      b.hidden = false;
+    }
     state.pending = {};
     $("refine").hidden = true;
     if (!state.items.length) setStatus("No sellable items found. Try a clearer or wider photo.", true);
