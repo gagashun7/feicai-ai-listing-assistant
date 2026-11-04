@@ -19,9 +19,18 @@ function setStatus(msg, isError = false) {
   el.classList.toggle("error", isError);
 }
 
+// Calendar days from today (local time) to the move-out date.
 function daysUntil(dateStr) {
-  const ms = new Date(dateStr + "T23:59:59").getTime() - Date.now();
-  return Math.max(0, Math.ceil(ms / 86400000));
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const target = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((target - today) / 86400000));
+}
+
+function localDateString(date) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
 }
 
 function el(tag, props = {}, children = []) {
@@ -122,6 +131,7 @@ function render() {
         el("div", { class: "price" }, [el("b", { text: `$${item.price_ideal_usd}` }), el("span", { text: "ideal price" })]),
         el("div", { class: "price" }, [el("b", { text: `$${item.price_quick_usd}` }), el("span", { text: "quick-sale price" })]),
       ]),
+      el("div", { class: "muted", text: `Price plan · ${daysLeft} day${daysLeft === 1 ? "" : "s"} until move-out` }),
       el("ul", { class: "schedule" }, schedule.map((s) => el("li", { text: `${s.when}: ${s.text}` }))),
     ]);
 
@@ -139,7 +149,7 @@ function render() {
 
   const total = state.items.reduce((s, i) => s + i.price_ideal_usd, 0);
   $("plan-summary").textContent =
-    `${state.items.length} items found · about $${total} if everything sells at the ideal price · ${daysLeft} days until move-out`;
+    `${state.items.length} items found · about $${total} if everything sells at the ideal price · ${daysLeft} day${daysLeft === 1 ? "" : "s"} until move-out`;
   $("step-results").hidden = false;
 }
 
@@ -192,7 +202,15 @@ $("photos").addEventListener("change", async (e) => {
   updateButton();
 });
 
-$("move-date").addEventListener("change", updateButton);
+$("move-date").addEventListener("change", () => {
+  updateButton();
+  // Changing the date only changes the price plan, which is computed in code,
+  // so refresh it right away without calling the model again.
+  if (state.items.length && $("move-date").value) {
+    state.moveOutDate = $("move-date").value;
+    render();
+  }
+});
 
 async function run() {
   state.moveOutDate = $("move-date").value;
@@ -228,8 +246,7 @@ $("export").addEventListener("click", exportListings);
 
 // default move-out date: 3 weeks from today
 {
-  const d = new Date(Date.now() + 21 * 86400000);
-  $("move-date").value = d.toISOString().slice(0, 10);
+  $("move-date").value = localDateString(new Date(Date.now() + 21 * 86400000));
 }
 if (!CFG.ANALYZE_URL) {
   const b = $("mode-banner");
